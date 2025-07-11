@@ -25,16 +25,18 @@ namespace FileReplicator
             "FailCopying",
             "FailOverwriting",
             "NoAction",
-            "FileLocked",
+            "FileLocked"
         ];
 
         public enum ExceptionMessageCode : int
         {
-            NoSettings = 0
+            NoSettings = 0,
+            NoDestinationFolder=1
         }
 
         public static string[] ExceptionMessages { get; } = [
-            "No settings.json file or serilization error or required property is empty"
+            "No settings.json file or serilization error or required property is empty",
+            "Destination folder doesn't exist"
         ];
 
 

@@ -16,7 +16,7 @@ namespace FileReplicator
         public Queue<string> GetLog() => _log;
         public List<(DirectoryInfo source, DirectoryInfo destination)> GetFolderToSync() => _foldersToSync;
         private readonly Queue<string> _log = [];
-        private readonly List<(DirectoryInfo source, DirectoryInfo destination)> _foldersToSync = [];        
+        private readonly List<(DirectoryInfo source, DirectoryInfo destination)> _foldersToSync = [];
         public FolderSync()
         {
         }
@@ -43,10 +43,10 @@ namespace FileReplicator
             FileInfo[] filesToSync = from.GetFiles();
             foreach (var file in filesToSync)
             {
-                files.Enqueue((from: file, to: new FileInfo(to.FullName+"\\"+file.Name)));                
+                files.Enqueue((from: file, to: new FileInfo(to.FullName + "\\" + file.Name)));
             }
             var _ = SyncFiles(files);
-            
+
         }
 
         public IEnumerable<(FileInfo from, FileInfo to)> SyncFiles(Queue<(FileInfo from, FileInfo to)> files)
@@ -55,7 +55,7 @@ namespace FileReplicator
             while (files.Count > 0)
             {
                 var file = files.Dequeue();
-                if (SyncFile(file.from,  ref file.to) == 5)
+                if (SyncFile(file.from, ref file.to) == 5)
                     lockedFiles.Add(file);
             }
             return lockedFiles;
@@ -78,8 +78,13 @@ namespace FileReplicator
                 }
                 else
                 {
-                    from.CopyTo(to.FullName);
-                    code = SyncOperationResultsCode.SuccessfulCopying;
+                    if (to.Directory == null || !to.Directory.Exists)
+                        throw new Exception(ExceptionMessages[(int)ExceptionMessageCode.NoDestinationFolder]);
+                    else
+                    {
+                        from.CopyTo(to.FullName);
+                        code = SyncOperationResultsCode.SuccessfulCopying;
+                    }
                 }
             else
                 code = SyncOperationResultsCode.FileLocked;

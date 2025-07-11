@@ -39,6 +39,7 @@ namespace FileReplicatorTests
         }
         [Theory]
         [InlineData("\\FolderSyncTest\\From", "\\FolderSyncTest\\To")]
+        [InlineData("\\FolderSyncTest\\From", "\\FolderSyncTest\\To2")]
         public void SyncFilesTest(string from, string to)
         {
             var cd = Environment.CurrentDirectory + "\\..\\..\\..";
@@ -61,14 +62,17 @@ namespace FileReplicatorTests
                 }
                 Xunit.Assert.Equal(Directory.GetFiles(cd + from).Length, Directory.GetFiles(cd + to).Length + 1);
 
+
+
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                throw;
+                Xunit.Assert.True(ex.Message == "Destination folder doesn't exist");                
             }
             finally
             {
-                Directory.GetFiles(cd + to).ToList().ForEach(f => File.Delete(f));
+                if (File.Exists(cd))
+                    Directory.GetFiles(cd + to).ToList().ForEach(f => File.Delete(f));
             }
 
         }
