@@ -9,7 +9,7 @@ namespace FileReplicator
 {
     public class Settings
     {
-        public SourceFolder[]? SourceFolders { get; set; }
+        public SourceFolder[] SourceFolders { get; set; } = [];
 
         public static Settings GetSettingsFromJSON(string json)
         {

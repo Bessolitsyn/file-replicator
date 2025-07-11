@@ -9,30 +9,54 @@ using System.Runtime.CompilerServices;
 
 namespace FileReplicator
 {
-    public class Replicator(Settings settings)
+    public class Replicator(Settings settings) :IDisposable
     {
         private Settings _settings = settings;
         private int _status = 0;
+        private List<FolderSync> _syncExecuters = [];
+        private bool _isReady = false;
 
         /// <summary>
         /// 0 - file replication is stopped, 1 - started
         /// </summary>
         public int Status { get=>_status; }
-        void Start()
+        private void Start()
         {
             _status = 1;
 
         }
-        void Stop()
+        private void Stop()
         { 
             _status = 0;
             
         }
+        
         public void FindFilesToReplicate()
         { }
         public void CompareFilesByUpdatedTime()
-
         { }
+        internal void Execute()
+        {
 
+            if (!_isReady)
+                Init();
+            _syncExecuters.ForEach(e => e.Sync());
+        }
+
+        private void Init()
+        {
+            foreach (var item in _settings.SourceFolders)
+            {
+                var fc = new FolderSync();
+                fc.AddFolderToSync(item.OriginalPath, item.DestinationPath);
+                _syncExecuters.Add(fc);
+            }
+            _isReady = true;
+        }
+
+        public void Dispose()
+        {
+            //throw new NotImplementedException();
+        }
     }
 }

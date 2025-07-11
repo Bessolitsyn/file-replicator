@@ -17,6 +17,7 @@ namespace FileReplicator.Tests
         public void GetSettingsFromJSONTest(string from, string to)
         {
             string json = "{\"SourceFolders\":[{\"OriginalPath\":\"" + from + "\",\"DestinationPath\":\"" + to + "\"}]}";
+            
             var settings = new Settings();
             try
             {

@@ -123,8 +123,4 @@ new line
  --rn- --r-
  --n--new line
  --rn- --r-
- --n-
- --rn- --r-
- --n-
- --rn- --r-
- --n--new line
+ --n--
