@@ -43,10 +43,7 @@ namespace FileReplicator
             FileInfo[] filesToSync = from.GetFiles();
             foreach (var file in filesToSync)
             {
-                if (!IsFileLocked(from.FullName))
-                {
-                    files.Enqueue((from: file, to: new FileInfo(to.FullName+"\\"+file.Name)));
-                }
+                files.Enqueue((from: file, to: new FileInfo(to.FullName+"\\"+file.Name)));                
             }
             var _ = SyncFiles(files);
             
@@ -58,21 +55,22 @@ namespace FileReplicator
             while (files.Count > 0)
             {
                 var file = files.Dequeue();
-                if (SyncFile(file.from.FullName, file.to.FullName) == 5)
+                if (SyncFile(file.from,  ref file.to) == 5)
                     lockedFiles.Add(file);
             }
             return lockedFiles;
         }
-        public int SyncFile(string from, string to)
+        public int SyncFile(FileInfo from, ref FileInfo to)
         {
-
+            from.Refresh();
+            to.Refresh();
             SyncOperationResultsCode code = SyncOperationResultsCode.NoAction;
             if (!IsFileLocked(from))
-                if (File.Exists(to))
+                if (to.Exists && !IsFileLocked(to))
                 {
-                    if (File.GetLastWriteTime(from) != File.GetLastWriteTime(to))
+                    if (!AreFilesEquivalent(from, to))
                     {
-                        File.Copy(from, to, true);
+                        from.CopyTo(to.FullName, true);
                         code = SyncOperationResultsCode.SuccessfulOverwriting;
                     }
                     else
@@ -80,12 +78,13 @@ namespace FileReplicator
                 }
                 else
                 {
-                    File.Copy(from, to);
+                    from.CopyTo(to.FullName);
                     code = SyncOperationResultsCode.SuccessfulCopying;
                 }
             else
                 code = SyncOperationResultsCode.FileLocked;
-            Log(from, to, code);
+            to.Refresh();
+            Log(from.FullName, to.FullName, code);
             return (int)code;
         }
 
@@ -94,11 +93,12 @@ namespace FileReplicator
             _log.Enqueue($"{LogMessages[(int)code]};{from};{to}");
         }
 
-        public static bool IsFileLocked(string filePath)
+        public static bool IsFileLocked(FileInfo file)
         {
+
             try
             {
-                using (FileStream stream = File.Open(filePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+                using (FileStream stream = File.Open(file.FullName, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
                 {
                     stream.Close();
                     return false;
@@ -113,6 +113,10 @@ namespace FileReplicator
             {
                 return false;
             }
+        }
+        public static bool AreFilesEquivalent(FileInfo from, FileInfo to)
+        {
+            return from.LastWriteTime == to.LastWriteTime;
         }
     }
 

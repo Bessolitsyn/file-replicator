@@ -46,7 +46,7 @@ namespace FileReplicatorTests
             var files = new Queue<(FileInfo from, FileInfo to)>();
             foreach (var f in Directory.GetFiles(cd + from))
             {
-                files.Enqueue((from: new FileInfo(f), to:new FileInfo(f.Replace(from, to))));
+                files.Enqueue((from: new FileInfo(f), to: new FileInfo(f.Replace(from, to))));
             }
 
             try
@@ -117,51 +117,82 @@ namespace FileReplicatorTests
         public void SyncNewFileTest(string file, string from, string to)
         {
             var cd = Environment.CurrentDirectory + "\\..\\..\\..";
-            from = cd + from + file;
-            to = cd + to + file;
-            var fc = new FolderSync();
-            if (!File.Exists(from)) throw new Exception("No file to sync");
-            int resultCode = fc.SyncFile(from, to);
-            Xunit.Assert.Equal(File.GetLastWriteTime(from), File.GetLastWriteTime(to));
-            Xunit.Assert.Equal(0, resultCode);
-            File.Delete(to);
+            var _from = new FileInfo(cd + from + file);
+            var _to = new FileInfo(cd + to + file);
+            try
+            {
+                var fc = new FolderSync();
+                if (!_from.Exists) throw new Exception("No file to sync");
+                int resultCode = fc.SyncFile(_from, ref _to);
+                Xunit.Assert.Equal(_from.LastWriteTime, _to.LastWriteTime);
+                Xunit.Assert.Equal(0, resultCode);
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+            finally
+            {
+                _to.Delete();
+            }
         }
         [Theory]
         [InlineData("file.txt", "\\FolderSyncTest\\From\\", "\\FolderSyncTest\\To\\")]
         public void SyncUpdatedFileTest(string file, string from, string to)
         {
             var cd = Environment.CurrentDirectory + "\\..\\..\\..";
-            from = cd + from + file;
-            to = cd + to + file;
-            var fc = new FolderSync();
-            fc.SyncFile(from, to);
-            if (!File.Exists(from)) throw new Exception("No file to sync");
-            File.AppendAllLines(from, ["new line"]);
-            int resultCode = fc.SyncFile(from, to);
-            Xunit.Assert.Equal(File.GetLastWriteTime(from), File.GetLastWriteTime(to));
-            Xunit.Assert.Equal(1, resultCode);
-            File.Delete(to);
+            var _from = new FileInfo(cd + from + file);
+            var _to = new FileInfo(cd + to + file);
+            try
+            {
+                var fc = new FolderSync();
+                fc.SyncFile(_from, ref _to);
+                if (!_from.Exists) throw new Exception("No file to sync");
+                File.AppendAllLines(_from.FullName, ["new line"]);
+                int resultCode = fc.SyncFile(_from, ref _to);
+
+                Xunit.Assert.Equal(_from.LastWriteTime, _to.LastWriteTime);
+                Xunit.Assert.Equal(1, resultCode);
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+            finally
+            {
+                _to.Delete();
+            }
         }
         [Theory]
         [InlineData("file.txt", "\\FolderSyncTest\\From\\", "\\FolderSyncTest\\To\\")]
         public void SyncOpenedFileTest(string file, string from, string to)
         {
             var cd = Environment.CurrentDirectory + "\\..\\..\\..";
-            from = cd + from + file;
-            to = cd + to + file;
-            var fc = new FolderSync();
-            fc.SyncFile(from, to);
-            if (!File.Exists(from)) throw new Exception("No file to sync");
-            using (var fs = File.OpenWrite(from))
+            var _from = new FileInfo(cd + from + file);
+            var _to = new FileInfo(cd + to + file);
+            try
             {
-                Helper.AddText(fs, "\r\n --rn--");
-                Helper.AddText(fs, "\r --r--");
-                Helper.AddText(fs, "\n --n--");
-                int resultCode =  fc.SyncFile(from, to);
-                Xunit.Assert.Equal(5, resultCode);
-                fs.Close();
+                var fc = new FolderSync();
+                fc.SyncFile(_from, ref _to);
+                if (!_from.Exists) throw new Exception("No file to sync");
+                using (var fs = _from.OpenWrite())
+                {
+                    Helper.AddText(fs, "\r\n --rn--");
+                    Helper.AddText(fs, "\r --r--");
+                    Helper.AddText(fs, "\n --n--");
+                    int resultCode = fc.SyncFile(_from, ref _to);
+                    Xunit.Assert.Equal(5, resultCode);
+                    fs.Close();
+                }
             }
-            File.Delete(to);
+            catch (Exception)
+            {
+                throw;
+            }
+            finally
+            {
+                _to.Delete();
+            }
         }
 
     }
@@ -171,7 +202,7 @@ namespace FileReplicatorTests
         public static void AddText(FileStream fs, string value)
         {
             byte[] info = new UTF8Encoding(true).GetBytes(value);
-            fs.Position = fs.Length - 1;
+            fs.Position = fs.Length == 0 ? 0 : fs.Length - 1;
             fs.Write(info, 0, info.Length);
         }
     }

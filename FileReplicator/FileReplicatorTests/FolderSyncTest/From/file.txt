@@ -35,6 +35,19 @@ Hello!
  --rn- --r-
  --n-
  --rn- --r-
+ --n--new line
+new line
+new line
+new line
+new line
+new line
+ --rn- --r-
+ --n-
+ --rn- --r-
+ --n--new line
+ --rn- --r-
+ --n-
+ --rn- --r-
  --n--new line
  --rn- --r-
  --n-
@@ -43,9 +56,14 @@ Hello!
  --rn- --r-
  --n-
  --rn- --r-
- --n-
+ --n--new line
+ --rn- --r-
+ --n--new line
+new line
  --rn- --r-
  --n-
+ --rn- --r-
+ --n--new line
  --rn- --r-
  --n-
  --rn- --r-
