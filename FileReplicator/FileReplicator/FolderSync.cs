@@ -1,13 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection.Metadata;
 using System.Reflection.Metadata.Ecma335;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using static FileReplicator.ServiceMessages;
+
+[assembly: InternalsVisibleTo("FolderSyncTests")]
 
 namespace FileReplicator
 {
@@ -17,9 +21,12 @@ namespace FileReplicator
         public List<(DirectoryInfo source, DirectoryInfo destination)> GetFolderToSync() => _foldersToSync;
         private readonly Queue<string> _log = [];
         private readonly List<(DirectoryInfo source, DirectoryInfo destination)> _foldersToSync = [];
+        private List<FileSystemWatcher> _observers = [];
+        private readonly CancellationTokenSource _cancellationTokenSource = new();    
+        private Task _observersTask;
+
         public FolderSync()
-        {
-        }
+        { }
 
         public void AddFolderToSync(string sourceFolder, string destinationFolder)
         {
@@ -31,7 +38,9 @@ namespace FileReplicator
             if (!idestinationFolder.Exists)
                 idestinationFolder.Create();
 
+            
             _foldersToSync.Add((source: isourceFolder, destination: idestinationFolder));
+            _observers.Add(new FileSystemWatcher(isourceFolder.FullName));
         }
         public void Sync()
         {
@@ -95,7 +104,7 @@ namespace FileReplicator
 
         void Log(string from, string to, SyncOperationResultsCode code)
         {
-            _log.Enqueue($"{LogMessages[(int)code]};{from};{to}");
+            _log.Enqueue($"{DateTime.Now}{LogMessages[(int)code]};{from};{to}");
         }
 
         public static bool IsFileLocked(FileInfo file)
@@ -123,6 +132,64 @@ namespace FileReplicator
         {
             return from.LastWriteTime == to.LastWriteTime;
         }
+
+
+
+        /// <summary>
+        /// Запуск мониторинга папок
+        /// </summary>
+        public void Start()
+        {
+            _observers.ForEach(o =>
+            {
+                o.NotifyFilter = NotifyFilters.LastWrite
+                                  | NotifyFilters.FileName
+                                  | NotifyFilters.DirectoryName;
+
+                //o.Changed += OnFileChanged;
+                //o.Created += OnFileChanged;
+                //o.Deleted += OnFileChanged;
+                //o.Renamed += OnFileRenamed;
+                o.EnableRaisingEvents = true;
+            });
+
+            // Запускаем асинхронный мониторинг с возможностью отмены
+            _observersTask = Task.Run(() => MonitorFolderAsync(_cancellationTokenSource.Token));
+        }
+        /// <summary>
+        /// Остановка мониторинга папок
+        /// </summary>
+        /// <returns></returns>
+        public async Task StopAsync()
+        {
+            _observers.ForEach(o=>o.EnableRaisingEvents = false);
+            _cancellationTokenSource.Cancel(); // Отправляем сигнал отмены
+
+            try
+            {
+                await _observersTask; // Ждём завершения задачи
+            }
+            catch (OperationCanceledException)
+            {
+                //Мониторинг остановлен
+                
+            }
+            finally
+            {
+                _observers.ForEach(o => o.Dispose());
+                _cancellationTokenSource.Dispose();
+            }
+        }
+        private async Task MonitorFolderAsync(CancellationToken cancellationToken)
+        {
+
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                // Здесь можно добавить периодическую проверку, если нужно
+                await Task.Delay(1000, cancellationToken); // Задержка с учётом отмены
+            }
+        }
+
     }
 
 

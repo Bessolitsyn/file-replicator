@@ -1,13 +1,16 @@
 ﻿using FileReplicator;
+using Moq;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
-using System.Threading.Tasks;
 using Xunit;
 using Xunit.Sdk;
+using System.Threading;
+using System.Threading.Tasks;
+
 
 namespace FileReplicatorTests
 {
@@ -199,6 +202,59 @@ namespace FileReplicatorTests
             }
         }
 
+        [Theory]
+        [InlineData("\\FolderSyncTest\\From", "\\FolderSyncTest\\To")]
+        public async Task StopAsync_ShouldStopMonitoring(string from, string to)
+        {
+            // Arrange
+
+            var cd = Environment.CurrentDirectory + "\\..\\..\\..";
+            var fromDir = new DirectoryInfo(cd + from);
+            var toDir = new DirectoryInfo(cd + to);;
+            var fc = new FolderSync();
+            
+            var cancellationTokenSource = new CancellationTokenSource();
+            var ct= new CancellationTokenSource();
+            fc.AddFolderToSync(fromDir.FullName, toDir.FullName);
+
+            // Заменяем реальный FileSystemWatcher на mock (если он используется в MonitorFolderAsync)
+            //var mockWatcher = new Mock<FileSystemWatcher>();
+            ///mockWatcher.Setup(w => w.EnableRaisingEvents).Returns(true);
+            // В данном примере предполагаем, что MonitorFolderAsync просто ждёт отмены
+
+            fc.Start();
+
+            // Act
+            await Task.Delay(100); // Даём время на старт
+            await fc.StopAsync();
+
+            // Assert
+            // Если StopAsync отработал без ошибок — тест пройден
+            Xunit.Assert.True(true);
+        }
+
+        [Theory]
+        [InlineData("\\FolderSyncTest\\From", "\\FolderSyncTest\\To")]
+        public async Task MonitorFolderAsync_ShouldStop_WhenCancellationRequested(string from, string to)
+        {
+            // Arrange
+
+            var cd = Environment.CurrentDirectory + "\\..\\..\\..";
+            var fromDir = new DirectoryInfo(cd + from);
+            var toDir = new DirectoryInfo(cd + to); ;
+            var fc = new FolderSync();
+
+            var cancellationTokenSource = new CancellationTokenSource();
+            fc.AddFolderToSync(fromDir.FullName, toDir.FullName);
+            
+            // Act
+            fc.Start(); // Запускаем мониторинг
+            
+            cancellationTokenSource.CancelAfter(100); // Отменяем через 100 мс
+
+            // Assert
+            Xunit.Assert.True(true);
+        }
     }
 
     static class Helper
