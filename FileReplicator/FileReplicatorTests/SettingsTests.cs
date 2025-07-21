@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Text.Json;
 
-namespace FileReplicator.Tests
+namespace FileReplicator.Tests.Unit
 {
     public class SettingsTests
     {

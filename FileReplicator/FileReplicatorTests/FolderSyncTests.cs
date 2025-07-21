@@ -13,7 +13,7 @@ using Xunit.Sdk;
 using static FileReplicator.ServiceMessages;
 
 
-namespace FileReplicatorTests
+namespace FileReplicator.Tests.Unit
 {
     public class FolderSyncTests
     {

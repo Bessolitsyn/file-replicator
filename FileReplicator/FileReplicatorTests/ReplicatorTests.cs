@@ -9,13 +9,13 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Xunit;
 
-namespace FileReplicator.Tests
+namespace FileReplicator.Tests.Integration
 {
     public class ReplicatorTests
     {
         [Theory]
         [InlineData(@"\FolderSyncTest\From", @"\FolderSyncTest\To")]
-        public void ExecuteReplicatorTest(string from, string to)
+        public void ExecuteReplicatorWithSettingsTest(string from, string to)
         {
             
             var cd = Environment.CurrentDirectory + "\\..\\..\\..";

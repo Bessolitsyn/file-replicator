@@ -638,4 +638,11 @@ new line
  --rn- --r-
  --n--new line
  --rn- --r-
- --n--
+ --n-
+ --rn- --r-
+ --n-
+ --rn- --r-
+ --n-
+ --rn- --r-
+ --n--new line
+new line
