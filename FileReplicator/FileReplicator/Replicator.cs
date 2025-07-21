@@ -20,13 +20,19 @@ namespace FileReplicator
         /// 0 - file replication is stopped, 1 - started
         /// </summary>
         public int Status { get=>_status; }
-        private void Start()
+        internal void Start()
         {
             _status = 1;
+            _syncExecuters.ForEach(x => {x.Start(); });
 
         }
-        private void Stop()
-        { 
+        internal async Task StopAsync()
+        {
+            _syncExecuters.ForEach(x => { _ = x.StopAsync(); });
+            foreach (var sync in _syncExecuters)
+            { 
+                await sync.StopAsync();
+            }
             _status = 0;
             
         }
@@ -35,6 +41,9 @@ namespace FileReplicator
         { }
         public void CompareFilesByUpdatedTime()
         { }
+        /// <summary>
+        /// Принудительная репликация файлов.
+        /// </summary>
         internal void Execute()
         {
 
