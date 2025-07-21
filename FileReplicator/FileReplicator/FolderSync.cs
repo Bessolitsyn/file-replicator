@@ -17,17 +17,24 @@ namespace FileReplicator
 {
     public class FolderSync
     {
-        public Queue<string> GetLog() => _log;
+        public string[] GetLog() => _log.ToArray();
         public List<(DirectoryInfo source, DirectoryInfo destination)> GetFolderToSync() => _foldersToSync;
         private readonly Queue<string> _log = [];
+        private readonly List<FileInfo> _fileInProcess = [];
         private readonly List<(DirectoryInfo source, DirectoryInfo destination)> _foldersToSync = [];
         private List<FileSystemWatcher> _observers = [];
         private readonly CancellationTokenSource _cancellationTokenSource = new();    
         private Task _observersTask;
 
+        public bool HaveFilesInProcess { get =>_fileInProcess.Count!=0; }
+
         public FolderSync()
         { }
-
+        /// <summary>
+        /// Добавить папку для синхронизации. Если в destinationFolder не существует папки одноименной с папкой-источником, таковая будет создана
+        /// </summary>
+        /// <param name="sourceFolder"></param>
+        /// <param name="destinationFolder"></param>
         public void AddFolderToSync(string sourceFolder, string destinationFolder)
         {
             DirectoryInfo isourceFolder, idestinationFolder;
@@ -104,7 +111,7 @@ namespace FileReplicator
 
         void Log(string from, string to, SyncOperationResultsCode code)
         {
-            _log.Enqueue($"{DateTime.Now}{LogMessages[(int)code]};{from};{to}");
+            _log.Enqueue($"{DateTime.Now};{LogMessages[(int)code]};{from};{to}");
         }
 
         public static bool IsFileLocked(FileInfo file)
@@ -133,8 +140,6 @@ namespace FileReplicator
             return from.LastWriteTime == to.LastWriteTime;
         }
 
-
-
         /// <summary>
         /// Запуск мониторинга папок
         /// </summary>
@@ -146,8 +151,8 @@ namespace FileReplicator
                                   | NotifyFilters.FileName
                                   | NotifyFilters.DirectoryName;
 
-                //o.Changed += OnFileChanged;
-                //o.Created += OnFileChanged;
+                o.Changed += OnFileChanged;
+                o.Created += OnFileChanged;
                 //o.Deleted += OnFileChanged;
                 //o.Renamed += OnFileRenamed;
                 o.EnableRaisingEvents = true;
@@ -156,14 +161,21 @@ namespace FileReplicator
             // Запускаем асинхронный мониторинг с возможностью отмены
             _observersTask = Task.Run(() => MonitorFolderAsync(_cancellationTokenSource.Token));
         }
+
+        private (FileInfo from, FileInfo to) getSourceFileInfo(FileInfo file)
+        {
+            var folder = _foldersToSync.First(f => f.source.FullName == file.Directory.FullName);
+            return (file, new FileInfo(folder.destination.FullName + "\\" + file.Name));
+        }
+
         /// <summary>
         /// Остановка мониторинга папок
         /// </summary>
         /// <returns></returns>
         public async Task StopAsync()
         {
-            _observers.ForEach(o=>o.EnableRaisingEvents = false);
             _cancellationTokenSource.Cancel(); // Отправляем сигнал отмены
+            _observers.ForEach(o=>o.EnableRaisingEvents = false);
 
             try
             {
@@ -190,6 +202,17 @@ namespace FileReplicator
             }
         }
 
+        #region EVENTS
+        private void OnFileChanged(object sender, FileSystemEventArgs e)
+        {
+            var file = new FileInfo(e.FullPath);
+            _fileInProcess.Add(file);
+            (FileInfo from, FileInfo to) syncOption = getSourceFileInfo(file);
+            //FileInfo dest = getSourceFileInfo(string shortfileName);
+            SyncFile(syncOption.from, ref syncOption.to);
+            _fileInProcess.Remove(file);
+        }
+        #endregion
     }
 
 

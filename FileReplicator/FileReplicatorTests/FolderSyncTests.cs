@@ -6,10 +6,11 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
-using Xunit;
-using Xunit.Sdk;
 using System.Threading;
 using System.Threading.Tasks;
+using Xunit;
+using Xunit.Sdk;
+using static FileReplicator.ServiceMessages;
 
 
 namespace FileReplicatorTests
@@ -42,7 +43,7 @@ namespace FileReplicatorTests
         }
         [Theory]
         [InlineData("\\FolderSyncTest\\From", "\\FolderSyncTest\\To")]
-        [InlineData("\\FolderSyncTest\\From", "\\FolderSyncTest\\To2")]
+        [InlineData("\\FolderSyncTest\\From", "\\FolderSyncTest\\NoExistFlder")]
         public void SyncFilesTest(string from, string to)
         {
             var cd = Environment.CurrentDirectory + "\\..\\..\\..";
@@ -70,11 +71,11 @@ namespace FileReplicatorTests
             }
             catch (Exception ex)
             {
-                Xunit.Assert.True(ex.Message == "Destination folder doesn't exist");                
+                Xunit.Assert.True(ex.Message == "Destination folder doesn't exist");
             }
             finally
             {
-                if (File.Exists(cd))
+                if (Directory.Exists(cd + to))
                     Directory.GetFiles(cd + to).ToList().ForEach(f => File.Delete(f));
             }
 
@@ -120,12 +121,12 @@ namespace FileReplicatorTests
         }
 
         [Theory]
-        [InlineData("file.txt", "\\FolderSyncTest\\From\\", "\\FolderSyncTest\\To\\")]
+        [InlineData("file2.txt", "\\FolderSyncTest\\From", "\\FolderSyncTest\\To")]
         public void SyncNewFileTest(string file, string from, string to)
         {
             var cd = Environment.CurrentDirectory + "\\..\\..\\..";
-            var _from = new FileInfo(cd + from + file);
-            var _to = new FileInfo(cd + to + file);
+            var _from = new FileInfo(cd + from + "\\" + file);
+            var _to = new FileInfo(cd + to + "\\" + file);
             try
             {
                 var fc = new FolderSync();
@@ -144,12 +145,12 @@ namespace FileReplicatorTests
             }
         }
         [Theory]
-        [InlineData("file.txt", "\\FolderSyncTest\\From\\", "\\FolderSyncTest\\To\\")]
+        [InlineData("file.txt", "\\FolderSyncTest\\From", "\\FolderSyncTest\\To")]
         public void SyncUpdatedFileTest(string file, string from, string to)
         {
             var cd = Environment.CurrentDirectory + "\\..\\..\\..";
-            var _from = new FileInfo(cd + from + file);
-            var _to = new FileInfo(cd + to + file);
+            var _from = new FileInfo(cd + from + "\\" + file);
+            var _to = new FileInfo(cd + to + "\\" + file);
             try
             {
                 var fc = new FolderSync();
@@ -171,12 +172,12 @@ namespace FileReplicatorTests
             }
         }
         [Theory]
-        [InlineData("file.txt", "\\FolderSyncTest\\From\\", "\\FolderSyncTest\\To\\")]
+        [InlineData("file.txt", "\\FolderSyncTest\\From", "\\FolderSyncTest\\To")]
         public void SyncOpenedFileTest(string file, string from, string to)
         {
             var cd = Environment.CurrentDirectory + "\\..\\..\\..";
-            var _from = new FileInfo(cd + from + file);
-            var _to = new FileInfo(cd + to + file);
+            var _from = new FileInfo(cd + from + "\\" + file);
+            var _to = new FileInfo(cd + to + "\\" + file);
             try
             {
                 var fc = new FolderSync();
@@ -203,38 +204,61 @@ namespace FileReplicatorTests
         }
 
         [Theory]
-        [InlineData("\\FolderSyncTest\\From", "\\FolderSyncTest\\To")]
-        public async Task StopAsync_ShouldStopMonitoring(string from, string to)
+        //[InlineData("\\FolderSyncTest\\From", "\\FolderSyncTest\\To")]
+        [InlineData("file.txt", "\\FolderSyncTest\\From", "\\FolderSyncTest\\To2")]
+        public async Task StopAsync_ShouldStopMonitoring(string file, string from, string to)
         {
             // Arrange
 
             var cd = Environment.CurrentDirectory + "\\..\\..\\..";
             var fromDir = new DirectoryInfo(cd + from);
-            var toDir = new DirectoryInfo(cd + to);;
+            var fromFile = new FileInfo(cd + from + "\\" + file);
+            var toDir = new DirectoryInfo(cd + to); ;
             var fc = new FolderSync();
-            
+
             var cancellationTokenSource = new CancellationTokenSource();
-            var ct= new CancellationTokenSource();
+            var ct = new CancellationTokenSource();
             fc.AddFolderToSync(fromDir.FullName, toDir.FullName);
 
             // Заменяем реальный FileSystemWatcher на mock (если он используется в MonitorFolderAsync)
             //var mockWatcher = new Mock<FileSystemWatcher>();
             ///mockWatcher.Setup(w => w.EnableRaisingEvents).Returns(true);
             // В данном примере предполагаем, что MonitorFolderAsync просто ждёт отмены
+            try
+            {
 
-            fc.Start();
 
-            // Act
-            await Task.Delay(100); // Даём время на старт
-            await fc.StopAsync();
+                fc.Start();
 
-            // Assert
-            // Если StopAsync отработал без ошибок — тест пройден
-            Xunit.Assert.True(true);
+                // Act
+                await Task.Delay(100); // Даём время на старт
+                if (!fromFile.Exists) throw new Exception("No file to sync");
+                File.AppendAllLines(fromFile.FullName, ["new line"]);
+
+                await fc.StopAsync();
+
+                while (fc.HaveFilesInProcess)
+                {
+                    await Task.Delay(1000);
+
+                }
+                // Assert
+                // Если StopAsync отработал без ошибок — тест пройден
+                var log = fc.GetLog() ?? throw new Exception();
+
+                Xunit.Assert.True(log.Last().Contains(file)
+                    && log.Last().Contains(LogMessages[(int)SyncOperationResultsCode.SuccessfulCopying])
+                );
+            }
+            finally
+            {
+                toDir.Delete(true);
+                //toDir.Delete();
+            }
         }
 
         [Theory]
-        [InlineData("\\FolderSyncTest\\From", "\\FolderSyncTest\\To")]
+        [InlineData("\\FolderSyncTest\\From", "\\FolderSyncTest\\To7")]
         public async Task MonitorFolderAsync_ShouldStop_WhenCancellationRequested(string from, string to)
         {
             // Arrange
@@ -245,15 +269,18 @@ namespace FileReplicatorTests
             var fc = new FolderSync();
 
             var cancellationTokenSource = new CancellationTokenSource();
-            fc.AddFolderToSync(fromDir.FullName, toDir.FullName);
-            
+            //fc.AddFolderToSync(fromDir.FullName, toDir.FullName);
+
             // Act
+            await Task.Delay(4000);
             fc.Start(); // Запускаем мониторинг
-            
+
             cancellationTokenSource.CancelAfter(100); // Отменяем через 100 мс
 
             // Assert
             Xunit.Assert.True(true);
+            
+
         }
     }
 
