@@ -5,15 +5,18 @@ using System.Text;
 using System.Threading.Tasks;
 
 using System.Runtime.CompilerServices;
+using Microsoft.Extensions.Logging;
+
 [assembly: InternalsVisibleTo("FileReplicatorTests")]
 
 namespace FileReplicator
 {
-    public class Replicator(Settings settings) :IDisposable
+    public class Replicator(Settings settings, ILogger logger ) :IDisposable
     {
-        private Settings _settings = settings;
+        private readonly Settings _settings = settings;
+        private readonly ILogger _logger = logger;
+        private readonly List<FolderSync> _syncExecuters = [];
         private int _status = 0;
-        private List<FolderSync> _syncExecuters = [];
         private bool _isReady = false;
 
         /// <summary>
@@ -56,7 +59,7 @@ namespace FileReplicator
         {
             foreach (var item in _settings.SourceFolders)
             {
-                var fc = new FolderSync();
+                var fc = new FolderSync(_logger);
                 fc.AddFolderToSync(item.OriginalPath, item.DestinationPath);
                 _syncExecuters.Add(fc);
             }

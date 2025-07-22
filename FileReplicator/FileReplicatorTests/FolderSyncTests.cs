@@ -1,4 +1,5 @@
-﻿using FileReplicator;
+﻿using Castle.Core.Logging;
+using FileReplicator;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -10,6 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 using Xunit.Sdk;
+using Microsoft.Extensions.Logging;
 using static FileReplicator.ServiceMessages;
 
 
@@ -24,7 +26,9 @@ namespace FileReplicator.Tests.Unit
         {
             try
             {
-                var fc = new FolderSync();
+                var mlog = new Mock<Microsoft.Extensions.Logging.ILogger>();
+                var fc = new FolderSync(mlog.Object);
+
                 fc.AddFolderToSync(from, to);
                 fc.Sync();
                 Xunit.Assert.Single(fc.GetFolderToSync());
@@ -42,12 +46,15 @@ namespace FileReplicator.Tests.Unit
 
         }
         [Theory]
-        [InlineData("\\FolderSyncTest\\From", "\\FolderSyncTest\\To")]
+        [InlineData("\\FolderSyncTest\\From", "\\FolderSyncTest\\1")]
         [InlineData("\\FolderSyncTest\\From", "\\FolderSyncTest\\NoExistFlder")]
         public void SyncFilesTest(string from, string to)
         {
             var cd = Environment.CurrentDirectory + "\\..\\..\\..";
-            var fc = new FolderSync();
+
+            var mlog = new Mock<Microsoft.Extensions.Logging.ILogger>();
+            var fc = new FolderSync(mlog.Object);
+
             var files = new Queue<(FileInfo from, FileInfo to)>();
             foreach (var f in Directory.GetFiles(cd + from))
             {
@@ -56,7 +63,7 @@ namespace FileReplicator.Tests.Unit
 
             try
             {
-                using (var fs = File.OpenWrite(cd + from + "\\file.txt"))
+                using (var fs = File.OpenWrite(cd + from + "\\wg0.txt"))
                 {
                     Helper.AddText(fs, "\r\n --rn--");
                     Helper.AddText(fs, "\r --r--");
@@ -82,7 +89,7 @@ namespace FileReplicator.Tests.Unit
         }
 
         [Theory]
-        [InlineData("\\FolderSyncTest\\From", "\\FolderSyncTest\\To")]
+        [InlineData("\\FolderSyncTest\\From", "\\FolderSyncTest\\2")]
         public void SyncFolderTest(string from, string to)
         {
             var cd = Environment.CurrentDirectory + "\\..\\..\\..";
@@ -90,7 +97,10 @@ namespace FileReplicator.Tests.Unit
             var toDir = new DirectoryInfo(cd + to);
             //string[] filesToSync = Directory.GetFiles(from);
             //string[] filesinToFolder = [];
-            var fc = new FolderSync();
+
+            var mlog = new Mock<Microsoft.Extensions.Logging.ILogger>();
+            var fc = new FolderSync(mlog.Object);
+
             try
             {
                 var expectedFiles = fromDir.GetFiles();
@@ -121,7 +131,7 @@ namespace FileReplicator.Tests.Unit
         }
 
         [Theory]
-        [InlineData("file2.txt", "\\FolderSyncTest\\From", "\\FolderSyncTest\\To")]
+        [InlineData("file2.txt", "\\FolderSyncTest\\From", "\\FolderSyncTest\\3")]
         public void SyncNewFileTest(string file, string from, string to)
         {
             var cd = Environment.CurrentDirectory + "\\..\\..\\..";
@@ -129,7 +139,9 @@ namespace FileReplicator.Tests.Unit
             var _to = new FileInfo(cd + to + "\\" + file);
             try
             {
-                var fc = new FolderSync();
+                var mlog = new Mock<Microsoft.Extensions.Logging.ILogger>();
+                var fc = new FolderSync(mlog.Object);
+
                 if (!_from.Exists) throw new Exception("No file to sync");
                 int resultCode = fc.SyncFile(_from, ref _to);
                 Xunit.Assert.Equal(_from.LastWriteTime, _to.LastWriteTime);
@@ -145,7 +157,7 @@ namespace FileReplicator.Tests.Unit
             }
         }
         [Theory]
-        [InlineData("file.txt", "\\FolderSyncTest\\From", "\\FolderSyncTest\\To")]
+        [InlineData("file.txt", "\\FolderSyncTest\\From", "\\FolderSyncTest\\4")]
         public void SyncUpdatedFileTest(string file, string from, string to)
         {
             var cd = Environment.CurrentDirectory + "\\..\\..\\..";
@@ -153,7 +165,9 @@ namespace FileReplicator.Tests.Unit
             var _to = new FileInfo(cd + to + "\\" + file);
             try
             {
-                var fc = new FolderSync();
+                var mlog = new Mock<Microsoft.Extensions.Logging.ILogger>();
+                var fc = new FolderSync(mlog.Object);
+
                 fc.SyncFile(_from, ref _to);
                 if (!_from.Exists) throw new Exception("No file to sync");
                 File.AppendAllLines(_from.FullName, ["new line"]);
@@ -172,7 +186,7 @@ namespace FileReplicator.Tests.Unit
             }
         }
         [Theory]
-        [InlineData("file.txt", "\\FolderSyncTest\\From", "\\FolderSyncTest\\To")]
+        [InlineData("file.txt", "\\FolderSyncTest\\From", "\\FolderSyncTest\\5")]
         public void SyncOpenedFileTest(string file, string from, string to)
         {
             var cd = Environment.CurrentDirectory + "\\..\\..\\..";
@@ -180,7 +194,9 @@ namespace FileReplicator.Tests.Unit
             var _to = new FileInfo(cd + to + "\\" + file);
             try
             {
-                var fc = new FolderSync();
+                var mlog = new Mock<Microsoft.Extensions.Logging.ILogger>();
+                var fc = new FolderSync(mlog.Object);
+
                 fc.SyncFile(_from, ref _to);
                 if (!_from.Exists) throw new Exception("No file to sync");
                 using (var fs = _from.OpenWrite())
@@ -205,7 +221,7 @@ namespace FileReplicator.Tests.Unit
 
         [Theory]
         //[InlineData("\\FolderSyncTest\\From", "\\FolderSyncTest\\To")]
-        [InlineData("file.txt", "\\FolderSyncTest\\From", "\\FolderSyncTest\\To2")]
+        [InlineData("file.txt", "\\FolderSyncTest\\From", "\\FolderSyncTest\\To1")]
         public async Task StopAsync_ShouldStopMonitoring(string file, string from, string to)
         {
             // Arrange
@@ -214,7 +230,9 @@ namespace FileReplicator.Tests.Unit
             var fromDir = new DirectoryInfo(cd + from);
             var fromFile = new FileInfo(cd + from + "\\" + file);
             var toDir = new DirectoryInfo(cd + to); ;
-            var fc = new FolderSync();
+
+            var mlog = new Mock<Microsoft.Extensions.Logging.ILogger>();
+            var fc = new FolderSync(mlog.Object);
 
             var cancellationTokenSource = new CancellationTokenSource();
             var ct = new CancellationTokenSource();
@@ -244,11 +262,11 @@ namespace FileReplicator.Tests.Unit
                 }
                 // Assert
                 // Если StopAsync отработал без ошибок — тест пройден
-                var log = fc.GetLog() ?? throw new Exception();
+                //просто проверить есть ли файл в папке получателя
+                //var log = fc.GetLog() ?? throw new Exception();
 
-                Xunit.Assert.True(log.Last().Contains(file)
-                    && log.Last().Contains(LogMessages[(int)SyncOperationResultsCode.SuccessfulCopying])
-                );
+                Xunit.Assert.Single(toDir.GetDirectories());
+                Xunit.Assert.Single(toDir.GetDirectories().First().GetFiles());
             }
             finally
             {
@@ -258,7 +276,7 @@ namespace FileReplicator.Tests.Unit
         }
 
         [Theory]
-        [InlineData("\\FolderSyncTest\\From", "\\FolderSyncTest\\To7")]
+        [InlineData("\\FolderSyncTest\\From", "\\FolderSyncTest\\To2")]
         public async Task MonitorFolderAsync_ShouldStop_WhenCancellationRequested(string from, string to)
         {
             // Arrange
@@ -266,7 +284,9 @@ namespace FileReplicator.Tests.Unit
             var cd = Environment.CurrentDirectory + "\\..\\..\\..";
             var fromDir = new DirectoryInfo(cd + from);
             var toDir = new DirectoryInfo(cd + to); ;
-            var fc = new FolderSync();
+
+            var mlog = new Mock<Microsoft.Extensions.Logging.ILogger>();
+            var fc = new FolderSync(mlog.Object);
 
             var cancellationTokenSource = new CancellationTokenSource();
             //fc.AddFolderToSync(fromDir.FullName, toDir.FullName);

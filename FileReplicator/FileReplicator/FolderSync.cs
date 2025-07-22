@@ -10,6 +10,8 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using static FileReplicator.ServiceMessages;
+using Microsoft.Extensions.Logging;
+using System.Security;
 
 [assembly: InternalsVisibleTo("FolderSyncTests")]
 
@@ -17,19 +19,22 @@ namespace FileReplicator
 {
     public class FolderSync
     {
-        public string[] GetLog() => _log.ToArray();
+        public ILogger GetLog() => _log;
         public List<(DirectoryInfo source, DirectoryInfo destination)> GetFolderToSync() => _foldersToSync;
-        private readonly Queue<string> _log = [];
+        //private readonly Queue<string> _log = [];
+        private readonly ILogger _log;
         private readonly List<FileInfo> _fileInProcess = [];
         private readonly List<(DirectoryInfo source, DirectoryInfo destination)> _foldersToSync = [];
         private List<FileSystemWatcher> _observers = [];
         private readonly CancellationTokenSource _cancellationTokenSource = new();    
-        private Task _observersTask;
+        private Task? _observersTask;
 
         public bool HaveFilesInProcess { get =>_fileInProcess.Count!=0; }
 
-        public FolderSync()
-        { }
+        public FolderSync(ILogger logger)
+        {
+           _log = logger;
+        }
         /// <summary>
         /// Добавить папку для синхронизации. Если в destinationFolder не существует папки одноименной с папкой-источником, таковая будет создана
         /// </summary>
@@ -111,7 +116,9 @@ namespace FileReplicator
 
         void Log(string from, string to, SyncOperationResultsCode code)
         {
-            _log.Enqueue($"{DateTime.Now};{LogMessages[(int)code]};{from};{to}");
+            _log.Log(LogLevel.Information, $"{DateTime.Now};{LogMessages[(int)code]};{from};{to}");
+            LogUpdated?.Invoke();
+            //_log.Enqueue($"{DateTime.Now};{LogMessages[(int)code]};{from};{to}");
         }
 
         public static bool IsFileLocked(FileInfo file)
@@ -162,7 +169,7 @@ namespace FileReplicator
             _observersTask = Task.Run(() => MonitorFolderAsync(_cancellationTokenSource.Token));
         }
 
-        private (FileInfo from, FileInfo to) getSourceFileInfo(FileInfo file)
+        private (FileInfo from, FileInfo to) GetSourceFileInfo(FileInfo file)
         {
             var folder = _foldersToSync.First(f => f.source.FullName == file.Directory.FullName);
             return (file, new FileInfo(folder.destination.FullName + "\\" + file.Name));
@@ -202,16 +209,20 @@ namespace FileReplicator
             }
         }
 
-        #region EVENTS
+        #region EVENTS & AND EVENT HANDLERS
         private void OnFileChanged(object sender, FileSystemEventArgs e)
         {
             var file = new FileInfo(e.FullPath);
             _fileInProcess.Add(file);
-            (FileInfo from, FileInfo to) syncOption = getSourceFileInfo(file);
+            (FileInfo from, FileInfo to) syncOption = GetSourceFileInfo(file);
             //FileInfo dest = getSourceFileInfo(string shortfileName);
             SyncFile(syncOption.from, ref syncOption.to);
             _fileInProcess.Remove(file);
         }
+
+        public delegate void LogUpdatedHandler();
+        public event LogUpdatedHandler? LogUpdated;
+
         #endregion
     }
 

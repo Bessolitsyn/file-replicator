@@ -1,4 +1,5 @@
 ﻿using FileReplicator;
+using Moq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -24,7 +25,11 @@ namespace FileReplicator.Tests.Integration
             string json = "{\"SourceFolders\":[{\"OriginalPath\":" + escapedFrom + ",\"DestinationPath\":" + escapedTo + "}]}";
             var s = Settings.GetSettingsFromJSON(json);
 
-            using (Replicator rep = new(s))
+
+            var mlog = new Mock<Microsoft.Extensions.Logging.ILogger>();
+            var fc = new FolderSync(mlog.Object);
+
+            using (Replicator rep = new(s, mlog.Object))
             {   
                 Xunit.Assert.Equal(0, rep.Status);
                 try
