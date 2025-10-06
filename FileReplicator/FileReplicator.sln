@@ -1,11 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.14.36202.13 d17.14
+VisualStudioVersion = 17.14.36202.13
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FileReplicator", "FileReplicator\FileReplicator.csproj", "{266E11CE-8737-4AE1-B558-B9560F1EE1E9}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FileReplicatorTests", "FileReplicatorTests\FileReplicatorTests.csproj", "{B52F1404-B597-4F23-BEE4-E6B548E77B61}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FileReplicatorWinApp", "FileReplicatorWinApp\FileReplicatorWinApp.csproj", "{E2647676-69E6-4BC1-A716-5564CC71AF69}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,12 @@ Global
 		{B52F1404-B597-4F23-BEE4-E6B548E77B61}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B52F1404-B597-4F23-BEE4-E6B548E77B61}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B52F1404-B597-4F23-BEE4-E6B548E77B61}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E2647676-69E6-4BC1-A716-5564CC71AF69}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{E2647676-69E6-4BC1-A716-5564CC71AF69}.Debug|Any CPU.Build.0 = Debug|x64
+		{E2647676-69E6-4BC1-A716-5564CC71AF69}.Debug|Any CPU.Deploy.0 = Debug|x64
+		{E2647676-69E6-4BC1-A716-5564CC71AF69}.Release|Any CPU.ActiveCfg = Release|x64
+		{E2647676-69E6-4BC1-A716-5564CC71AF69}.Release|Any CPU.Build.0 = Release|x64
+		{E2647676-69E6-4BC1-A716-5564CC71AF69}.Release|Any CPU.Deploy.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

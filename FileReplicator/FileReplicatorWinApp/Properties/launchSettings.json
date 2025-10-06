@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "FileReplicatorWinApp (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "FileReplicatorWinApp (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
