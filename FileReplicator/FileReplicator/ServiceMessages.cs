@@ -8,7 +8,7 @@ using System.Runtime.CompilerServices;
 
 namespace FileReplicator
 {
-    internal static class ServiceMessages
+    public static class ServiceMessages
     {
         public enum SyncOperationResultsCode : int
         {
@@ -17,7 +17,10 @@ namespace FileReplicator
             FailCopying = 2,
             FailOverwriting = 3,
             NoAction = 4,
-            FileLocked = 5
+            FileLocked = 5,
+            SuccessfulDeleting = 6,
+            SuccessfulRenamed = 7,
+            SuccessfulMoved= 8
         }
         public static string[] LogMessages { get; } = [
             "SuccessfulCopying",
@@ -25,7 +28,10 @@ namespace FileReplicator
             "FailCopying",
             "FailOverwriting",
             "NoAction",
-            "FileLocked"
+            "FileLocked",
+            "SuccessfulDeleting",
+            "SuccessfulRenamed",
+            "SuccessfulMoved"
         ];
 
         public enum ExceptionMessageCode : int

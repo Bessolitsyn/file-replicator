@@ -3,11 +3,13 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.14.36202.13
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FileReplicator", "FileReplicator\FileReplicator.csproj", "{266E11CE-8737-4AE1-B558-B9560F1EE1E9}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Reptor", "FileReplicator\Reptor.csproj", "{266E11CE-8737-4AE1-B558-B9560F1EE1E9}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FileReplicatorTests", "FileReplicatorTests\FileReplicatorTests.csproj", "{B52F1404-B597-4F23-BEE4-E6B548E77B61}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FileReplicatorWinApp", "FileReplicatorWinApp\FileReplicatorWinApp.csproj", "{E2647676-69E6-4BC1-A716-5564CC71AF69}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReprotWinApp", "FileReplicatorWinApp\ReprotWinApp.csproj", "{E2647676-69E6-4BC1-A716-5564CC71AF69}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReptorConsole", "FileReplicatorConsole\ReptorConsole.csproj", "{AD72FE87-B6F5-67CC-A15A-DDE05FAA45FC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -29,6 +31,10 @@ Global
 		{E2647676-69E6-4BC1-A716-5564CC71AF69}.Release|Any CPU.ActiveCfg = Release|x64
 		{E2647676-69E6-4BC1-A716-5564CC71AF69}.Release|Any CPU.Build.0 = Release|x64
 		{E2647676-69E6-4BC1-A716-5564CC71AF69}.Release|Any CPU.Deploy.0 = Release|x64
+		{AD72FE87-B6F5-67CC-A15A-DDE05FAA45FC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AD72FE87-B6F5-67CC-A15A-DDE05FAA45FC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AD72FE87-B6F5-67CC-A15A-DDE05FAA45FC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AD72FE87-B6F5-67CC-A15A-DDE05FAA45FC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
