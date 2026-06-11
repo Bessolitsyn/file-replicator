@@ -19,6 +19,12 @@ using static FileReplicator.FileCopyLog;
 
 namespace FileReplicator
 {
+    /// <summary>
+    /// Provides functionality for synchronizing files and folders between a source and destination.
+    /// Handles initial replication, continuous monitoring (observation), and logging of changes.
+    /// <para>Обеспечивает функциональность синхронизации файлов и папок между источником и назначением. 
+    /// Обрабатывает начальную репликацию, непрерывный мониторинг (наблюдение) и логирование изменений.</para>
+    /// </summary>
     public class FolderSync
     {
         private readonly ILogger _log;
@@ -37,6 +43,11 @@ namespace FileReplicator
         public bool HaveFilesInProcess { get => _fileInProcess.Count != 0; }
         public bool IsObserving { get => _isObserving; }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="FolderSync"/> class.
+        /// <para>Инициализирует новый экземпляр класса <see cref="FolderSync"/>.</para>
+        /// </summary>
+        /// <param name="logger">Logger for recording synchronization events. / Логгер для записи событий синхронизации.</param>
         public FolderSync(ILogger logger)
         {
             _log = logger;
@@ -47,14 +58,24 @@ namespace FileReplicator
 
         }
 
+        /// <summary>
+        /// Gets the logger instance.
+        /// <para>Возвращает экземпляр логгера.</para>
+        /// </summary>
         public ILogger GetLog() => _log;
+
+        /// <summary>
+        /// Gets the current source and destination folders configured for synchronization.
+        /// <para>Возвращает текущие исходную и целевую папки, настроенные для синхронизации.</para>
+        /// </summary>
         public (DirectoryInfo source, DirectoryInfo destination) GetFolderToSync() => _foldersToSync[0];
 
         /// <summary>
-        /// Добавить папку для синхронизации. Если в destinationFolder не существует папки одноименной с папкой-источником, таковая будет создана
+        /// Sets the source and destination folders for synchronization. Ensures both exist.
+        /// <para>Устанавливает исходную и целевую папки для синхронизации. Гарантирует, что обе существуют.</para>
         /// </summary>
-        /// <param name="sourceFolder"></param>
-        /// <param name="destinationFolder"></param>
+        /// <param name="sourceFolder">Source directory information. / Информация об исходном каталоге.</param>
+        /// <param name="destinationFolder">Destination directory information. / Информация о целевом каталоге.</param>
         public void SerFolderToSync(DirectoryInfo sourceFolder, DirectoryInfo destinationFolder)
         {
             if (!sourceFolder.Exists)
@@ -64,6 +85,12 @@ namespace FileReplicator
             _foldersToSync[0] = (source: sourceFolder, destination: destinationFolder);
         }
 
+        /// <summary>
+        /// Configures the system to observe changes in the source folder and reflect them in the destination.
+        /// <para>Настраивает систему для наблюдения за изменениями в исходной папке и их отражения в целевой.</para>
+        /// </summary>
+        /// <param name="sourceFolder">Folder to monitor. / Папка для мониторинга.</param>
+        /// <param name="destinationFolder">Folder to apply changes to. / Папка для применения изменений.</param>
         public void SetFolderToObserve(DirectoryInfo sourceFolder, DirectoryInfo destinationFolder)
         {
             SerFolderToSync(sourceFolder, destinationFolder);
@@ -71,11 +98,24 @@ namespace FileReplicator
             SetUpWatcherForFolder(fls, _isObserving);
             _observers[0] = fls;
         }
+
+        /// <summary>
+        /// Removes a folder from observation.
+        /// <para>Удаляет папку из списка наблюдения.</para>
+        /// </summary>
+        /// <param name="sourceFolder">Source folder. / Исходная папка.</param>
+        /// <param name="destinationFolder">Destination folder. / Целевая папка.</param>
+        /// <exception cref="NotImplementedException">Not yet implemented. / Еще не реализовано.</exception>
         public void RemoveFolderToObserve(DirectoryInfo sourceFolder, DirectoryInfo destinationFolder)
         {
             throw new NotImplementedException();
         }
 
+        /// <summary>
+        /// Performs a full replication of files from source to destination for all configured folders.
+        /// <para>Выполняет полную репликацию файлов из источника в назначение для всех настроенных папок.</para>
+        /// </summary>
+        /// <returns>A value task representing the asynchronous operation. / ValueTask, представляющий асинхронную операцию.</returns>
         public async ValueTask ReplicateAsync()
         {
             foreach (var f in _foldersToSync)
@@ -112,12 +152,25 @@ namespace FileReplicator
 
         }
 
+        /// <summary>
+        /// Handles the event when a file copy operation fails.
+        /// <para>Обрабатывает событие при сбое операции копирования файла.</para>
+        /// </summary>
+        /// <param name="from">Source file. / Исходный файл.</param>
+        /// <param name="to">Destination file. / Целевой файл.</param>
+        /// <param name="ex">The exception that occurred. / Исключение, которое произошло.</param>
         private void FileSync_CopyFailedFile(FileInfo from, FileInfo to, Exception ex)
         {
 
             Log(from.FullName, ex.ToString(), LogLevel.Warning); //TODO сделать елдинообразно
         }
-        //TODO сделать потоко безопасными
+
+        /// <summary>
+        /// Handles the event when a file is successfully copied and updates progress tracking.
+        /// <para>Обрабатывает событие при успешном копировании файла и обновляет отслеживание прогресса.</para>
+        /// </summary>
+        /// <param name="from">Source file. / Исходный файл.</param>
+        /// <param name="to">Destination file. / Целевой файл.</param>
         private void FileSync_CopiedFile(FileInfo from, FileInfo to)
         {
 
@@ -130,8 +183,13 @@ namespace FileReplicator
             }
         }
 
-        // TODO: Асинхронность
-        //Дает список файлов для копирования удаления и загружает предыдущий лог синхронизации
+        /// <summary>
+        /// Analyzes files in the source and destination to determine which files need to be copied or updated.
+        /// <para>Анализирует файлы в источнике и назначении, чтобы определить, какие файлы нужно скопировать или обновить.</para>
+        /// </summary>
+        /// <param name="from">Source directory. / Исходный каталог.</param>
+        /// <param name="to">Destination directory. / Целевой каталог.</param>
+        /// <returns>A FileCopyLog containing the list of files and folders to process. / FileCopyLog, содержащий список файлов и папок для обработки.</returns>
         public async Task<FileCopyLog> GetFileCopyLogAsync(DirectoryInfo from, DirectoryInfo to)
         {
             var copyLog = new FileCopyLog(to);
@@ -179,6 +237,12 @@ namespace FileReplicator
 
         }
 
+        /// <summary>
+        /// Obsolete: Synchronizes a queue of files.
+        /// <para>Устарело: Синхронизирует очередь файлов.</para>
+        /// </summary>
+        /// <param name="files">Queue of source and destination files. / Очередь исходных и целевых файлов.</param>
+        /// <returns>A list of files that were locked. / Список заблокированных файлов.</returns>
         [Obsolete]
         public IEnumerable<(FileInfo from, FileInfo to)> SyncFiles(Queue<(FileInfo from, FileInfo to)> files)
         {
@@ -197,8 +261,13 @@ namespace FileReplicator
             return lockedFiles;
         }
 
-        //Эта функция вызывается при мониторинге папки 
-        //TODO сделать запись в журнал о том что файл скопирован
+        /// <summary>
+        /// Synchronizes a single file based on its existence and modification state.
+        /// <para>Синхронизирует один файл на основе его существования и состояния модификации.</para>
+        /// </summary>
+        /// <param name="from">Source file. / Исходный файл.</param>
+        /// <param name="to">Destination file (passed by reference). / Целевой файл (передается по ссылке).</param>
+        /// <returns>The result code of the synchronization operation. / Код результата операции синхронизации.</returns>
         public SyncOperationResultsCode SyncFile(FileInfo from, ref FileInfo to)
         {
             //добавить проверку что файл только что был скопирован, а то событие вызывающее это метод происходит
@@ -237,6 +306,14 @@ namespace FileReplicator
             SyncedFile?.Invoke((code, from, to));
             return code;
         }
+
+        /// <summary>
+        /// Obsolete: Synchronizes a directory.
+        /// <para>Устарело: Синхронизирует каталог.</para>
+        /// </summary>
+        /// <param name="from">Source directory. / Исходный каталог.</param>
+        /// <param name="to">Destination directory. / Целевой каталог.</param>
+        /// <returns>The result code of the synchronization operation. / Код результата операции синхронизации.</returns>
         [Obsolete]
         public SyncOperationResultsCode SyncDir(DirectoryInfo from, ref DirectoryInfo to)
         {
@@ -254,6 +331,12 @@ namespace FileReplicator
             return code;
         }
 
+        /// <summary>
+        /// Checks if a file is currently locked by another process.
+        /// <para>Проверяет, заблокирован ли файл в данный момент другим процессом.</para>
+        /// </summary>
+        /// <param name="file">File to check. / Файл для проверки.</param>
+        /// <returns>True if the file is locked; otherwise, false. / True, если файл заблокирован; иначе false.</returns>
         public static bool IsFileLocked(FileInfo file)
         {
 
@@ -275,15 +358,24 @@ namespace FileReplicator
                 return false;
             }
         }
+
+        /// <summary>
+        /// Checks if two files are equivalent based on their last write time.
+        /// <para>Проверяет, эквивалентны ли два файла на основе времени последнего изменения.</para>
+        /// </summary>
+        /// <param name="from">Source file. / Исходный файл.</param>
+        /// <param name="to">Destination file. / Целевой файл.</param>
+        /// <returns>True if the files are equivalent; otherwise, false. / True, если файлы эквивалентны; иначе false.</returns>
         public static bool AreFilesEquivalent(FileInfo from, FileInfo to)
         {
             return from.LastWriteTime == to.LastWriteTime;
         }
 
         /// <summary>
-        /// Остановка мониторинга папок
+        /// Stops monitoring the folders and cleans up resources.
+        /// <para>Останавливает мониторинг папок и освобождает ресурсы.</para>
         /// </summary>
-        /// <returns></returns>
+        /// <returns>A task representing the asynchronous operation. / Задача, представляющая асинхронную операцию.</returns>
         public async Task<bool> StopObservingAsync()
         {
             var result = false;
@@ -311,9 +403,12 @@ namespace FileReplicator
             result = true;
             return result;
         }
+
         /// <summary>
-        /// Запуск мониторинга папок
+        /// Starts the folder monitoring process.
+        /// <para>Запускает процесс мониторинга папок.</para>
         /// </summary>
+        /// <returns>True if monitoring started successfully; otherwise, false. / True, если мониторинг успешно запущен; иначе false.</returns>
         public bool StartObserving()
         {
             if (_observers[0] == null)
@@ -329,6 +424,12 @@ namespace FileReplicator
             return true;
         }
 
+        /// <summary>
+        /// Configures a <see cref="FileSystemWatcher"/> for a folder.
+        /// <para>Настраивает <see cref="FileSystemWatcher"/> для папки.</para>
+        /// </summary>
+        /// <param name="watcher">The watcher instance. / Экземпляр наблюдателя.</param>
+        /// <param name="startObserving">Whether to start observing immediately. / Начать ли наблюдение немедленно.</param>
         public void SetUpWatcherForFolder(FileSystemWatcher watcher, bool startObserving = false)
         {
             var o = watcher;
@@ -353,6 +454,12 @@ namespace FileReplicator
             return $"{String.Join(";", _foldersToSync.Select(f => f.source.FullName))}";
         }
 
+        /// <summary>
+        /// Maps a source file to its corresponding destination file.
+        /// <para>Сопоставляет исходный файл с соответствующим ему целевым файлом.</para>
+        /// </summary>
+        /// <param name="file">The source file. / Исходный файл.</param>
+        /// <returns>A tuple containing the source and destination FileInfo. / Кортеж, содержащий FileInfo источника и назначения.</returns>
         private (FileInfo from, FileInfo to) GetSourceFileInfo(FileInfo file)
         {
             if (_foldersToSync[0].source.FullName == file.Directory?.FullName)
@@ -367,6 +474,11 @@ namespace FileReplicator
             }
         }
 
+        /// <summary>
+        /// Background loop for monitoring folder activities.
+        /// <para>Фоновый цикл для мониторинга активности папок.</para>
+        /// </summary>
+        /// <param name="cancellationToken">Token to signal cancellation. / Токен для сигнала отмены.</param>
         private async Task MonitorFolderAsync(CancellationToken cancellationToken)
         {
             //забыл зачем это 
@@ -377,6 +489,10 @@ namespace FileReplicator
             }
         }
 
+        /// <summary>
+        /// Saves current synchronization logs to disk.
+        /// <para>Сохраняет текущие логи синхронизации на диск.</para>
+        /// </summary>
         private async Task SaveCopyLogs()
         {
             foreach (var log in _FileCopyLogInProcess)
@@ -387,6 +503,10 @@ namespace FileReplicator
             _FileCopyLogInProcess.Clear();
         }
 
+        /// <summary>
+        /// Log helper for synchronization results.
+        /// <para>Вспомогательный метод логирования результатов синхронизации.</para>
+        /// </summary>
         private void Log(string from, string to, SyncOperationResultsCode code)
         {
             var logLevel = code == SyncOperationResultsCode.FailCopying || code == SyncOperationResultsCode.FailOverwriting ? LogLevel.Warning : LogLevel.Information;
@@ -395,6 +515,11 @@ namespace FileReplicator
             _log.Log(logLevel, $"{LogMessages[(int)code]};{from};{to}");
             LogUpdated?.Invoke($"{logLevel}==={DateTime.Now}::{LogMessages[(int)code]};{from};{to}");
         }
+
+        /// <summary>
+        /// Log helper for single-entity synchronization events.
+        /// <para>Вспомогательный метод логирования событий синхронизации одного объекта.</para>
+        /// </summary>
         private void Log(string file, SyncOperationResultsCode code)
         {
             var logLevel = code == SyncOperationResultsCode.FailCopying || code == SyncOperationResultsCode.FailOverwriting ? LogLevel.Warning : LogLevel.Information;
@@ -402,6 +527,11 @@ namespace FileReplicator
             _log.Log(logLevel, $"{LogMessages[(int)code]};{file}");
             LogUpdated?.Invoke($"{logLevel}==={DateTime.Now}::{LogMessages[(int)code]};{file}");
         }
+
+        /// <summary>
+        /// Generic log helper for custom messages.
+        /// <para>Общий вспомогательный метод логирования для пользовательских сообщений.</para>
+        /// </summary>
         private void Log(string message1, string message2, LogLevel logLevel)
         {
             _log.Log(logLevel, $"{message1};{message2}");
@@ -410,14 +540,24 @@ namespace FileReplicator
         }
 
         #region EVENTS & AND EVENT HANDLERS
+
+        /// <summary>
+        /// Event handler for file creation in the source folder.
+        /// <para>Обработчик события создания файла в исходной папке.</para>
+        /// </summary>
         private void OnFileCreated(object sender, FileSystemEventArgs e)
         {
             var file = new FileInfo(e.FullPath);
             var (from, to) = GetSourceFileInfo(file);
-            var code = SyncFile(from, ref to);  //TO DO Может быть очередь сделать на обработку и обработчик будет смотреть в очередь и ее обрабатывать
+            var code = SyncFile(from, ref to);  //TO DO Может быть очередь сделать на обработку и обработчик будет смотреть в очередь и обрабатывать
             Log("OnFileCreated", from.Name, LogLevel.Debug);
             Log(from.FullName, to.FullName, code);
         }
+
+        /// <summary>
+        /// Event handler for file changes in the source folder.
+        /// <para>Обработчик события изменения файла в исходной папке.</para>
+        /// </summary>
         private void OnFileChanged(object sender, FileSystemEventArgs e)
         {
             //можно реализовать так если событие постоянно срабатывает часто например в течении пары секунд. можно создать задачу на синк и отправить в пул задач, а агент который читает пулл
@@ -426,11 +566,16 @@ namespace FileReplicator
             //_fileInProcess.Add(file);
             var (from, to) = GetSourceFileInfo(file);
             //FileInfo dest = getSourceFileInfo(string shortfileName);
-            var code = SyncFile(from, ref to);  //TO DO Может быть очередь сделать на обработку и обработчик будет смотреть в очередь и ее обрабатывать
+            var code = SyncFile(from, ref to);  //TO DO Может быть очередь сделать на обработку и обработчик будет смотреть в очередь и обрабатывать
             Log("OnFileChanged", from.Name, LogLevel.Debug);
             Log(from.FullName, to.FullName, code);
             //_ = _fileInProcess.TryTake(out file); //TO DO сделать обработчик если false
         }
+
+        /// <summary>
+        /// Event handler for file deletion in the source folder.
+        /// <para>Обработчик события удаления файла в исходной папке.</para>
+        /// </summary>
         private void OnFileDeleted(object sender, FileSystemEventArgs e)
         {
             var file = new FileInfo(e.FullPath);
@@ -441,6 +586,11 @@ namespace FileReplicator
             Log(from.FullName, to.FullName, code);
             //_fileInProcess.TryTake(out file);
         }
+
+        /// <summary>
+        /// Event handler for file or folder renaming/moving in the source folder.
+        /// <para>Обработчик события переименования или перемещения файла/папки в исходной папке.</para>
+        /// </summary>
         private void OnFileRenamed(object sender, RenamedEventArgs e)
         {
             var code = e.Name == e.OldName ? SyncOperationResultsCode.SuccessfulMoved : SyncOperationResultsCode.SuccessfulRenamed;

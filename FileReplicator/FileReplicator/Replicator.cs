@@ -11,6 +11,12 @@ using Microsoft.Extensions.Logging;
 
 namespace FileReplicator
 {
+    /// <summary>
+    /// The main orchestrator for the file replication service. 
+    /// Manages multiple synchronization tasks and coordinates between configuration and execution.
+    /// <para>Основной оркестратор службы репликации файлов. 
+    /// Управляет несколькими задачами синхронизации и координирует работу между конфигурацией и выполнением.</para>
+    /// </summary>
     public class Replicator(Settings settings, ILogger logger ) :IDisposable
     {
         private readonly Settings _settings = settings;
@@ -21,15 +27,28 @@ namespace FileReplicator
         private bool _isReadyToStart = false;
 
         /// <summary>
-        /// 0 - file replication is stopped, 1 - started
+        /// Current status of the replicator.
+        /// 0 - stopped, 1 - started.
+        /// <para>Текущий статус репликатора. 0 - остановлен, 1 - запущен.</para>
         /// </summary>
         public int Status { get=>_status; }
+
+        /// <summary>
+        /// Starts the replication process, including the observation of folders if configured.
+        /// <para>Запускает процесс репликации, включая наблюдение за папками, если это настроено.</para>
+        /// </summary>
         public void Start()
         {
             if (!_isReadyToObserve) InitToObserve();
             _syncExecuters.ForEach(x => { x.StartObserving(); });
             _status = 1;
         }
+
+        /// <summary>
+        /// Asynchronously stops the replication process and stops all active observers.
+        /// <para>Асинхронно останавливает процесс репликации и всех активных наблюдателей.</para>
+        /// </summary>
+        /// <returns>A task representing the asynchronous operation. / Задача, представляющая асинхронную операцию.</returns>
         public async Task StopAsync()
         {            
             foreach (var sync in _syncExecuters)
@@ -41,8 +60,10 @@ namespace FileReplicator
         }
         
         /// <summary>
-        /// Принудительная репликация файлов.
+        /// Forces an immediate replication of all configured folders.
+        /// <para>Принудительно выполняет немедленную репликацию всех настроенных папок.</para>
         /// </summary>
+        /// <returns>A task representing the asynchronous operation. / Задача, представляющая асинхронную операцию.</returns>
         public async Task ExecuteAsync()
         {
             
@@ -60,6 +81,10 @@ namespace FileReplicator
             _logger.Log(LogLevel.Information, "==| Reptor has finished");
         }
 
+        /// <summary>
+        /// Initializes synchronization executors for a one-time replication run.
+        /// <para>Инициализирует исполнителей синхронизации для однократного запуска репликации.</para>
+        /// </summary>
         private void InitToStart()
         {
             foreach (var item in _settings.SourceFolders)
@@ -71,6 +96,11 @@ namespace FileReplicator
             }
             _isReadyToStart= true;
         }
+
+        /// <summary>
+        /// Initializes synchronization executors with folder observation capabilities.
+        /// <para>Инициализирует исполнителей синхронизации с возможностями наблюдения за папками.</para>
+        /// </summary>
         private void InitToObserve()
         {
             foreach (var item in _settings.SourceFolders)
@@ -82,6 +112,10 @@ namespace FileReplicator
             _isReadyToObserve = true;
         }
 
+        /// <summary>
+        /// Releases resources used by the Replicator.
+        /// <para>Освобождает ресурсы, используемые репликатором.</para>
+        /// </summary>
         public void Dispose()
         {
             //throw new NotImplementedException();
