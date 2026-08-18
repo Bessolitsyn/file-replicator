@@ -28,19 +28,19 @@ namespace FileReplicator
     public class FolderSync
     {
         private readonly ILogger _log;
-        private readonly ConcurrentBag<FileInfo> _fileInProcess = [];
+        private readonly ConcurrentBag<Task> _tasksInProcess = [];
         private readonly List<FileCopyLog> _FileCopyLogInProcess = [];
         private readonly (DirectoryInfo source, DirectoryInfo destination)[] _foldersToSync = new (DirectoryInfo source, DirectoryInfo destination)[1];
         private FileSystemWatcher[] _observers = new FileSystemWatcher[1];
         private readonly CancellationTokenSource _cancellationTokenSource = new();
-        private Task? _observersTask;
+        private Task _observersTask;
         private bool _isObserving = false;
         private int _countOfFilesToCopy = 0;
         private int _progressParts = 0;
         private int _progressPartsCount = 10;
+        private int _cores = 0;
         //private readonly ISyncedFileList _previosSyncedFileList; //_previosSyncedFolderList?
-
-        public bool HaveFilesInProcess { get => _fileInProcess.Count != 0; }
+        //public bool HaveFilesInProcess { get => _fileInProcess.Count != 0; }
         public bool IsObserving { get => _isObserving; }
 
         /// <summary>
@@ -116,7 +116,7 @@ namespace FileReplicator
         /// <para>Выполняет полную репликацию файлов из источника в назначение для всех настроенных папок.</para>
         /// </summary>
         /// <returns>A value task representing the asynchronous operation. / ValueTask, представляющий асинхронную операцию.</returns>
-        public async ValueTask ReplicateAsync()
+        public async ValueTask ReplicateAsync(int cores = 0)
         {
             foreach (var f in _foldersToSync)
             {
@@ -124,11 +124,10 @@ namespace FileReplicator
 
                 var fileCopyLog = await GetFileCopyLogAsync(f.source, f.destination);
                 var fileSync = new FileProcessor();
+
                 fileSync.SetParallelOptions(new ParallelOptions()
                 {
-                    //Тут надо экспериментировать на SSD с учетом антивируса на моем ноуте это самое оптимальное 
-                    //TODO Проверить сеть, и другие случаи.
-                    MaxDegreeOfParallelism = Environment.ProcessorCount
+                    MaxDegreeOfParallelism = cores == 0 ? Environment.ProcessorCount : cores * 2
                 });
 
                 _countOfFilesToCopy = fileCopyLog.GetFilesToCopyCount();
@@ -173,13 +172,13 @@ namespace FileReplicator
         /// <param name="to">Destination file. / Целевой файл.</param>
         private void FileSync_CopiedFile(FileInfo from, FileInfo to)
         {
-
+            if (_progressParts < 10) return;
             _countOfFilesToCopy--;
             if (_countOfFilesToCopy == _progressParts * (_progressPartsCount - 1))
             {
 
-                Log("PROGRESS", $"{_progressParts * 10 - _countOfFilesToCopy} from {_progressParts * 10}", LogLevel.Information);
                 _progressPartsCount--;
+                Log("PROGRESS", $"{_progressParts * 10 - _countOfFilesToCopy} files are ready out of {_progressParts * 10}", LogLevel.Information);
             }
         }
 
@@ -339,7 +338,6 @@ namespace FileReplicator
         /// <returns>True if the file is locked; otherwise, false. / True, если файл заблокирован; иначе false.</returns>
         public static bool IsFileLocked(FileInfo file)
         {
-
             try
             {
                 using (FileStream stream = File.Open(file.FullName, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
@@ -398,9 +396,13 @@ namespace FileReplicator
                     _observers[0].Dispose();
                     _cancellationTokenSource.Dispose();
                 }
+                
+                //TODO Нужно наверное дождатья - так как процесс мониторинга может запустить копирование большой папки
+                //(Например при переименовании папки (в папке которая мониторится) которой нет в получателе
+                //_tasksInProcess 
+
             }
             StopedObserving?.Invoke();
-            result = true;
             return result;
         }
 
@@ -409,14 +411,15 @@ namespace FileReplicator
         /// <para>Запускает процесс мониторинга папок.</para>
         /// </summary>
         /// <returns>True if monitoring started successfully; otherwise, false. / True, если мониторинг успешно запущен; иначе false.</returns>
-        public bool StartObserving()
+        public bool StartObserving(int cores = 0)
         {
+            _cores = cores;
             if (_observers[0] == null)
             {
                 Log("StartObserving", "Fail, No folder to observe", LogLevel.Information);
                 return false;
             }
-            Log("StartObserving", "Execute", LogLevel.Information);
+            Log($"Start observing for {_observers[0].Path}", "", LogLevel.Information);
             _observers[0].EnableRaisingEvents = true;
             // Запускаем асинхронный мониторинг с возможностью отмены
             _observersTask = Task.Run(() => MonitorFolderAsync(_cancellationTokenSource.Token));
@@ -603,7 +606,7 @@ namespace FileReplicator
             var (fromOld, toOld) = GetSourceFileInfo(oldfile);
             if (isDir)
             {
-                var olddir= new DirectoryInfo(toOld.FullName);
+                var olddir = new DirectoryInfo(toOld.FullName);
                 if (olddir.Exists)
                 {
                     olddir.MoveTo(to.FullName);
@@ -617,7 +620,8 @@ namespace FileReplicator
                     //var todir = new DirectoryInfo(to.FullName);
                     var fc = new FolderSync(_log);
                     fc.SerFolderToSync(new DirectoryInfo(from.FullName), new DirectoryInfo(to.FullName));
-                    var t = Task.Run(()=>fc.ReplicateAsync());
+                    var t = Task.Run(() => fc.ReplicateAsync(_cores));
+                    _tasksInProcess.Add(t);
                     Log("OnFileRenamed", from.Name, LogLevel.Debug);
                     Log($"Copy folder {from.FullName} to {to.FullName} in background", to.FullName, LogLevel.Information);
                     return;

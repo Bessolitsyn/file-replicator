@@ -37,10 +37,10 @@ namespace FileReplicator
         /// Starts the replication process, including the observation of folders if configured.
         /// <para>Запускает процесс репликации, включая наблюдение за папками, если это настроено.</para>
         /// </summary>
-        public void Start()
+        public void Start(int cores)
         {
             if (!_isReadyToObserve) InitToObserve();
-            _syncExecuters.ForEach(x => { x.StartObserving(); });
+            _syncExecuters.ForEach(x => { x.StartObserving(cores); });
             _status = 1;
         }
 
@@ -64,7 +64,7 @@ namespace FileReplicator
         /// <para>Принудительно выполняет немедленную репликацию всех настроенных папок.</para>
         /// </summary>
         /// <returns>A task representing the asynchronous operation. / Задача, представляющая асинхронную операцию.</returns>
-        public async Task ExecuteAsync()
+        public async Task ExecuteAsync(int cores= 0)
         {
             
             if (!_isReadyToStart) InitToStart();
@@ -73,7 +73,7 @@ namespace FileReplicator
             {
                 var tstart = DateTime.Now;
                 _logger.Log(LogLevel.Information, $"==| Folders item<{item.ToString()}> is processing");
-                await item.ReplicateAsync();
+                await item.ReplicateAsync(cores);
                 var dur = DateTime.Now - tstart;
                 _logger.Log(LogLevel.Information, $"==| Folders item has finished with duration: {dur.Minutes}min{dur.Seconds}sec");
 

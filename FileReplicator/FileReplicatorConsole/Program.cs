@@ -1,69 +1,75 @@
 ﻿using FileReplicator;
 using Microsoft.Extensions.Logging;
-using System;
+using System.CommandLine;
+using System.CommandLine.Invocation;
 using System.IO;
-using System.Text.Json;
 using System.Threading.Tasks;
 
 class Program
 {
-    static async Task Main(string[] args)
+    static async Task<int> Main(string[] args)
     {
-        //if (args.Length == 0)
-        //{
-        //    Console.WriteLine("Hello, It's  The Reptor - Folder To Folder replicator (folder synchronizer)  tool");
-        //    Console.WriteLine("Usage: ReptorConsole [settings.csv] [-start]");
-        //    return;
-        //}
+        var rootCommand = new RootCommand("Folder To Folder replicator (folder synchronizer)");
 
-        string settingsPath = "settings.csv";
-        bool doInitialSync = false;
-        if (args.Length == 1)
+        var settingsArg = new Argument<string>(
+            name: "settings",
+            description: "Path to settings CSV file (default: settings.csv in current directory)",
+            getDefaultValue: () => "settings.csv"
+        );
+
+        var startOption = new Option<bool>(
+            aliases: ["--start", "-s"],
+            description: "Run initial sync and exit. If not specified, runs in folder monitoring mode (watches for changes in source folder)"
+        );
+
+        var coresOption = new Option<int>(
+            aliases: ["--cores", "-c"],
+            description: "Number of CPU cores to use, (default: All cores of CPU)",
+            getDefaultValue: () => 0
+        );
+
+        rootCommand.AddArgument(settingsArg);
+        rootCommand.AddOption(startOption);
+        rootCommand.AddOption(coresOption);
+
+        rootCommand.SetHandler(async (InvocationContext context) =>
         {
-            doInitialSync = args[0].Equals("-start", StringComparison.OrdinalIgnoreCase);
-            if (!doInitialSync) settingsPath = args[0];
-        }
-        if (args.Length == 2)
-        {
-            doInitialSync = args[1].Equals("-start", StringComparison.OrdinalIgnoreCase);
-            if (!doInitialSync)
+            string settingsPath = context.ParseResult.GetValueForArgument(settingsArg);
+            bool doInitialSync = context.ParseResult.GetValueForOption(startOption);
+            int cores = context.ParseResult.GetValueForOption(coresOption);
+
+            var file = new FileInfo(settingsPath);
+
+            if (!file.Exists)
             {
-                Console.WriteLine("Usage: ReptorConsole [settings.csv] [-start]");
+                Console.WriteLine($"Settings file not found: {settingsPath}");
+                context.ExitCode = 1;
                 return;
             }
-            settingsPath = args[0];
-        }
 
-        var file = new FileInfo(settingsPath);
+            var settings = Settings.GetSettingsFromCSV(file);
 
-        //if (!File.Exists(settingsPath))
-        if (!file.Exists)
-        {
-            Console.WriteLine($"Settings file not found: {settingsPath}");
-            return;
-        }
+            using var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+            var logger = loggerFactory.CreateLogger("Reptor_Console");
+            using var replicator = new Replicator(settings, logger);
 
-        //string file = File.ReadAllText(settingsPath);
-        //var settings = Settings.GetSettingsFromJSON(json);
-        var settings = Settings.GetSettingsFromCSV(file);
+            if (doInitialSync)
+            {
+                Console.WriteLine("Running initial sync...");
+                await replicator.ExecuteAsync(cores);
+            }
+            else
+            {
+                Console.WriteLine("Monitoring folders...");
+                replicator.Start(cores);
 
-        using var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
-        var logger = loggerFactory.CreateLogger("Reptor_Console");
-        using var replicator = new Replicator(settings, logger);
+                Console.WriteLine("Press Enter to exit.");
+                Console.ReadLine();
 
-        if (doInitialSync)
-        {
-            Console.WriteLine("Running initial sync...");
-            await replicator.ExecuteAsync();
-        }
-        else { 
-            Console.WriteLine("Monitoring folders...");
-            replicator.Start();
+                await replicator.StopAsync();
+            }
+        });
 
-            Console.WriteLine("Press Enter to exit.");
-            Console.ReadLine();
-
-            await replicator.StopAsync();
-        }
+        return await rootCommand.InvokeAsync(args);
     }
 }
